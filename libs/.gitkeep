@@ -1,2 +1,6 @@
-# 將 ATAS.Indicators.dll 放入此資料夾
-# 路徑：C:\Program Files (x86)\ATAS Platform\ATAS.Indicators.dll
+# 將以下 DLL 從 ATAS 安裝目錄複製到此資料夾：
+# 來源：D:\ATAS Platform\
+#
+#   ATAS.Indicators.dll
+#   OFT.Rendering.dll
+#   OFT.Core.dll

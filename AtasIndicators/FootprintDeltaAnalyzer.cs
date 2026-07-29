@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Windows.Media;
 using ATAS.Indicators;
-using ATAS.Indicators.Drawing;
 
 namespace AtasIndicators
 {
@@ -58,44 +57,34 @@ namespace AtasIndicators
         }
 
         // ── Constructor ─────────────────────────────────────────────
-        public FootprintDeltaAnalyzer() : base(true) // true = 使用 footprint 數據
+        public FootprintDeltaAnalyzer() : base(true)
         {
-            // Delta 線（副圖）
             _delta = new ValueDataSeries("Delta")
             {
-                Color          = Colors.DeepSkyBlue,
-                LineDashStyle  = LineDashStyle.Solid,
-                Width          = 2,
-                Panel          = IndicatorDataProvider.NewPanel,
-                UseMinimumVisibleRange = true
+                Color      = Colors.DeepSkyBlue,
+                Width      = 2,
+                VisualType = VisualMode.Line
             };
 
-            // Ask 成交量（主動買，向上柱狀）
             _askVolume = new ValueDataSeries("Ask Volume")
             {
                 Color      = Colors.LimeGreen,
-                VisualType = VisualMode.Histogram,
-                Panel      = _delta.Panel
+                VisualType = VisualMode.Histogram
             };
 
-            // Bid 成交量（主動賣，向下柱狀）
             _bidVolume = new ValueDataSeries("Bid Volume")
             {
                 Color      = Colors.OrangeRed,
-                VisualType = VisualMode.Histogram,
-                Panel      = _delta.Panel
+                VisualType = VisualMode.Histogram
             };
 
-            // 累積 Delta（CVD）
             _cumulativeDelta = new ValueDataSeries("Cumulative Delta (CVD)")
             {
-                Color         = Colors.White,
-                LineDashStyle = LineDashStyle.Dot,
-                Width         = 1,
-                Panel         = _delta.Panel
+                Color      = Colors.White,
+                Width      = 1,
+                VisualType = VisualMode.Line
             };
 
-            // K 棒塗色
             _paintBars = new PaintbarsDataSeries("Bar Color");
 
             DataSeries.Add(_delta);
@@ -110,20 +99,18 @@ namespace AtasIndicators
         {
             var candle = GetCandle(bar);
 
-            decimal askVol = candle.Ask;   // 主動買（taker buy）
-            decimal bidVol = candle.Bid;   // 主動賣（taker sell）
-            decimal delta  = candle.Delta; // = Ask - Bid
+            decimal askVol = candle.Ask;
+            decimal bidVol = candle.Bid;
+            decimal delta  = candle.Delta;
 
             _askVolume[bar]  = askVol;
-            _bidVolume[bar]  = -bidVol;    // 負值使柱狀圖向下延伸
+            _bidVolume[bar]  = -bidVol;
             _delta[bar]      = delta;
 
-            // 累積 Delta
             _cumulativeDelta[bar] = bar == 0
                 ? delta
                 : _cumulativeDelta[bar - 1] + delta;
 
-            // K 棒塗色：根據 Delta 方向
             _paintBars[bar] = delta switch
             {
                 > 0 => _bullishColor,
@@ -132,40 +119,30 @@ namespace AtasIndicators
             };
 
             // ── Delta 背離偵測 ──────────────────────────────────────
-            // 看跌背離：價格創新高，但 Delta 連續遞減
             if (bar >= _divergenceThreshold)
             {
                 var currentCandle = GetCandle(bar);
                 var pastCandle    = GetCandle(bar - _divergenceThreshold);
 
+                // 看跌背離：價格創新高 但 Delta 連續遞減
                 bool priceMakingHighs = currentCandle.High > pastCandle.High;
                 bool deltaWeakening   = true;
-
                 for (int i = 1; i <= _divergenceThreshold; i++)
                 {
                     if (_delta[bar - i + 1] >= _delta[bar - i])
-                    {
-                        deltaWeakening = false;
-                        break;
-                    }
+                    { deltaWeakening = false; break; }
                 }
-
                 if (priceMakingHighs && deltaWeakening)
                     _paintBars[bar] = _divergenceColor;
 
-                // 看漲背離：價格創新低，但 Delta 連續遞增
+                // 看漲背離：價格創新低 但 Delta 連續遞增
                 bool priceMakingLows  = currentCandle.Low < pastCandle.Low;
                 bool deltaStrengening = true;
-
                 for (int i = 1; i <= _divergenceThreshold; i++)
                 {
                     if (_delta[bar - i + 1] <= _delta[bar - i])
-                    {
-                        deltaStrengening = false;
-                        break;
-                    }
+                    { deltaStrengening = false; break; }
                 }
-
                 if (priceMakingLows && deltaStrengening)
                     _paintBars[bar] = _divergenceColor;
             }

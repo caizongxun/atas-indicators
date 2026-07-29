@@ -11,10 +11,17 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
-  <!-- 手動指定 ATAS.Indicators.dll 路徑，請依實際安裝位置修改 -->
   <ItemGroup>
     <Reference Include="ATAS.Indicators">
       <HintPath>..\libs\ATAS.Indicators.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="OFT.Rendering">
+      <HintPath>..\libs\OFT.Rendering.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="OFT.Core">
+      <HintPath>..\libs\OFT.Core.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
