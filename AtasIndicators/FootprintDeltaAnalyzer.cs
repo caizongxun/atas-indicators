@@ -18,6 +18,7 @@ namespace AtasIndicators
 
         // ── 參數 ────────────────────────────────────────────────────
         private int _divergenceThreshold = 3;
+        private bool _enablePaintBars = false; // 需求 1：預設為 false
 
         [Display(Name = "Delta背離連續K棒數", GroupName = "設定", Order = 1)]
         public int DivergenceThreshold
@@ -31,25 +32,32 @@ namespace AtasIndicators
             }
         }
 
+        [Display(Name = "啟用K棒塗色", GroupName = "設定", Order = 2)]
+        public bool EnablePaintBars
+        {
+            get => _enablePaintBars;
+            set { _enablePaintBars = value; RecalculateValues(); }
+        }
+
         private Color _bullishColor = Colors.LimeGreen;
         private Color _bearishColor = Colors.OrangeRed;
         private Color _divergenceColor = Colors.Yellow;
 
-        [Display(Name = "主動買主色", GroupName = "顏色", Order = 2)]
+        [Display(Name = "主動買主色", GroupName = "顏色", Order = 3)]
         public Color BullishColor
         {
             get => _bullishColor;
             set { _bullishColor = value; RecalculateValues(); }
         }
 
-        [Display(Name = "主動賣主色", GroupName = "顏色", Order = 3)]
+        [Display(Name = "主動賣主色", GroupName = "顏色", Order = 4)]
         public Color BearishColor
         {
             get => _bearishColor;
             set { _bearishColor = value; RecalculateValues(); }
         }
 
-        [Display(Name = "背離警示色", GroupName = "顏色", Order = 4)]
+        [Display(Name = "背離警示色", GroupName = "顏色", Order = 5)]
         public Color DivergenceColor
         {
             get => _divergenceColor;
@@ -63,7 +71,7 @@ namespace AtasIndicators
             {
                 Color      = Colors.DeepSkyBlue,
                 Width      = 2,
-                VisualType = VisualMode.Line
+                VisualType = VisualMode.Histogram // 需求 3：改為 Histogram
             };
 
             _askVolume = new ValueDataSeries("Ask Volume")
@@ -111,40 +119,48 @@ namespace AtasIndicators
                 ? delta
                 : _cumulativeDelta[bar - 1] + delta;
 
-            _paintBars[bar] = delta switch
+            // 需求 1 & 2：加入塗色開關，並檢查是否為足跡圖數據 (Ask 與 Bid 均為 0 代表無足跡資料)
+            if (_enablePaintBars && (askVol != 0 || bidVol != 0))
             {
-                > 0 => _bullishColor,
-                < 0 => _bearishColor,
-                _   => Colors.Gray
-            };
+                _paintBars[bar] = delta switch
+                {
+                    > 0 => _bullishColor,
+                    < 0 => _bearishColor,
+                    _   => Colors.Gray
+                };
 
-            // ── Delta 背離偵測 ──────────────────────────────────────
-            if (bar >= _divergenceThreshold)
+                // ── Delta 背離偵測 ──────────────────────────────────────
+                if (bar >= _divergenceThreshold)
+                {
+                    var pastCandle = GetCandle(bar - _divergenceThreshold);
+
+                    // 看跌背離：價格創新高 但 Delta 連續遞減
+                    bool priceMakingHighs = candle.High > pastCandle.High;
+                    bool deltaWeakening   = true;
+                    for (int i = 1; i <= _divergenceThreshold; i++)
+                    {
+                        if (_delta[bar - i + 1] >= _delta[bar - i])
+                        { deltaWeakening = false; break; }
+                    }
+                    if (priceMakingHighs && deltaWeakening)
+                        _paintBars[bar] = _divergenceColor;
+
+                    // 看漲背離：價格創新低 但 Delta 連續遞增
+                    bool priceMakingLows  = candle.Low < pastCandle.Low;
+                    bool deltaStrengening = true;
+                    for (int i = 1; i <= _divergenceThreshold; i++)
+                    {
+                        if (_delta[bar - i + 1] <= _delta[bar - i])
+                        { deltaStrengening = false; break; }
+                    }
+                    if (priceMakingLows && deltaStrengening)
+                        _paintBars[bar] = _divergenceColor;
+                }
+            }
+            else
             {
-                var currentCandle = GetCandle(bar);
-                var pastCandle    = GetCandle(bar - _divergenceThreshold);
-
-                // 看跌背離：價格創新高 但 Delta 連續遞減
-                bool priceMakingHighs = currentCandle.High > pastCandle.High;
-                bool deltaWeakening   = true;
-                for (int i = 1; i <= _divergenceThreshold; i++)
-                {
-                    if (_delta[bar - i + 1] >= _delta[bar - i])
-                    { deltaWeakening = false; break; }
-                }
-                if (priceMakingHighs && deltaWeakening)
-                    _paintBars[bar] = _divergenceColor;
-
-                // 看漲背離：價格創新低 但 Delta 連續遞增
-                bool priceMakingLows  = currentCandle.Low < pastCandle.Low;
-                bool deltaStrengening = true;
-                for (int i = 1; i <= _divergenceThreshold; i++)
-                {
-                    if (_delta[bar - i + 1] <= _delta[bar - i])
-                    { deltaStrengening = false; break; }
-                }
-                if (priceMakingLows && deltaStrengening)
-                    _paintBars[bar] = _divergenceColor;
+                // 如果沒開關或是沒數據，清除 K 棒上的自定義顏色
+                _paintBars[bar] = Colors.Transparent;
             }
         }
     }
