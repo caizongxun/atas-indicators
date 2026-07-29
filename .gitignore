@@ -1,0 +1,13 @@
+# Build outputs
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# ATAS DLL (不追蹤，需自行從安裝目錄複製)
+libs/
+
+# Compiled indicators
+*.dll
+*.pdb

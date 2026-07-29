@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>AtasIndicators</AssemblyName>
+    <RootNamespace>AtasIndicators</RootNamespace>
+    <Platforms>x64</Platforms>
+    <LangVersion>latest</LangVersion>
+  </PropertyGroup>
+
+  <!-- 手動指定 ATAS.Indicators.dll 路徑，請依實際安裝位置修改 -->
+  <ItemGroup>
+    <Reference Include="ATAS.Indicators">
+      <HintPath>..\libs\ATAS.Indicators.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
