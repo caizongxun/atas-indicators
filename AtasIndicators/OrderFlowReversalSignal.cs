@@ -6,41 +6,55 @@ using ATAS.Indicators;
 
 namespace AtasIndicators
 {
-    [DisplayName("Order Flow Reversal Signal")]
-    [Description("結合足跡圖 Delta 與 K 棒型態，尋找吸收與套牢現象，提供反轉進出場信號")]
+    [DisplayName("Order Flow Reversal Signal V2")]
+    [Description("結合波段高低點、相對成交量與 Delta 比例，精準捕捉吸收與套牢的反轉信號")]
     public class OrderFlowReversalSignal : Indicator
     {
-        // ── Data Series ────────────────────────────────────────────
         private readonly ValueDataSeries _buySignals;
         private readonly ValueDataSeries _sellSignals;
 
-        // ── 參數 ────────────────────────────────────────────────────
-        private decimal _minVolume = 1000m;
-        private decimal _minDeltaAbs = 300m;
+        // ── 優化參數 ──────────────────────────────────────────────
+        private int _swingLookback = 5;
+        private int _volSmaPeriod = 10;
+        private decimal _volMultiplier = 1.2m;
+        private decimal _minDeltaRatio = 0.15m;
         private decimal _wickRatio = 0.5m;
 
-        [Display(Name = "最小觸發成交量 (Volume)", GroupName = "設定", Order = 1)]
-        public decimal MinVolume
+        [Display(Name = "波段高低點偵測 (K棒數)", GroupName = "1. 市場結構", Order = 1)]
+        public int SwingLookback
         {
-            get => _minVolume;
-            set { _minVolume = Math.Max(1, value); RecalculateValues(); }
+            get => _swingLookback;
+            set { _swingLookback = Math.Max(1, value); RecalculateValues(); }
         }
 
-        [Display(Name = "最小 Delta 絕對值", GroupName = "設定", Order = 2)]
-        public decimal MinDeltaAbs
+        [Display(Name = "均量計算週期", GroupName = "2. 成交量過濾", Order = 2)]
+        public int VolSmaPeriod
         {
-            get => _minDeltaAbs;
-            set { _minDeltaAbs = Math.Max(1, value); RecalculateValues(); }
+            get => _volSmaPeriod;
+            set { _volSmaPeriod = Math.Max(1, value); RecalculateValues(); }
         }
 
-        [Display(Name = "影線佔K棒比例 (0.1 ~ 0.9)", GroupName = "設定", Order = 3)]
+        [Display(Name = "爆量倍數 (例如 1.2 = 均量的1.2倍)", GroupName = "2. 成交量過濾", Order = 3)]
+        public decimal VolMultiplier
+        {
+            get => _volMultiplier;
+            set { _volMultiplier = Math.Max(0.1m, value); RecalculateValues(); }
+        }
+
+        [Display(Name = "Delta 佔成交量最小比例 (0.1~1.0)", GroupName = "3. 訂單流失衡", Order = 4)]
+        public decimal MinDeltaRatio
+        {
+            get => _minDeltaRatio;
+            set { _minDeltaRatio = Math.Max(0.01m, Math.Min(1m, value)); RecalculateValues(); }
+        }
+
+        [Display(Name = "影線佔K棒最小比例 (0.1~0.9)", GroupName = "4. 型態過濾", Order = 5)]
         public decimal WickRatio
         {
             get => _wickRatio;
             set { _wickRatio = Math.Max(0.1m, Math.Min(0.9m, value)); RecalculateValues(); }
         }
 
-        // ── Constructor ─────────────────────────────────────────────
         public OrderFlowReversalSignal() : base(true)
         {
             _buySignals = new ValueDataSeries("Buy Signal")
@@ -61,49 +75,56 @@ namespace AtasIndicators
             DataSeries.Add(_sellSignals);
         }
 
-        // ── 計算邏輯 ────────────────────────────────────────────────
         protected override void OnCalculate(int bar, decimal value)
         {
-            if (bar == 0) return;
+            if (bar < Math.Max(_swingLookback, _volSmaPeriod)) return;
 
             var candle = GetCandle(bar);
-
-            // 防呆：如果沒有足跡數據 (Ask 和 Bid 均為 0)，則無法計算 Delta，跳過邏輯
             if (candle.Ask == 0 && candle.Bid == 0) return;
 
-            // 初始化當前 K 棒的信號
             _buySignals[bar] = 0;
             _sellSignals[bar] = 0;
 
             decimal range = candle.High - candle.Low;
-            if (range == 0) return;
+            if (range == 0 || candle.Volume == 0) return;
 
-            decimal volume = candle.Volume;
-            decimal delta = candle.Delta;
+            // 1. 市場結構判定 (是否為局部高低點)
+            bool isSwingLow = true;
+            bool isSwingHigh = true;
+            for (int i = 1; i <= _swingLookback; i++)
+            {
+                if (candle.Low > GetCandle(bar - i).Low) isSwingLow = false;
+                if (candle.High < GetCandle(bar - i).High) isSwingHigh = false;
+            }
 
-            // 計算上下影線長度
+            // 2. 相對成交量判定
+            decimal sumVol = 0;
+            for (int i = 1; i <= _volSmaPeriod; i++)
+            {
+                sumVol += GetCandle(bar - i).Volume;
+            }
+            decimal avgVol = sumVol / _volSmaPeriod;
+            bool isHighVolume = candle.Volume >= (avgVol * _volMultiplier);
+
+            // 3. Delta 比例與型態計算
+            decimal deltaRatio = Math.Abs(candle.Delta) / candle.Volume;
+            bool isHeavyDelta = deltaRatio >= _minDeltaRatio;
+
             decimal upperWick = candle.High - Math.Max(candle.Open, candle.Close);
             decimal lowerWick = Math.Min(candle.Open, candle.Close) - candle.Low;
 
-            // ── 做多信號：吸收型態 (大量主動賣單被吸收，留下長下影線) ──
-            bool isHighVolume = volume >= _minVolume;
-            bool isHeavySelling = delta <= -_minDeltaAbs;
-            bool isLongLowerWick = (lowerWick / range) >= _wickRatio;
+            decimal tickSize = InstrumentInfo?.TickSize ?? 0.01m;
 
-            if (isHighVolume && isHeavySelling && isLongLowerWick)
+            // ── 做多信號：波段低點 + 爆量 + 主動賣單套牢(負Delta) + 長下影線 ──
+            if (isSwingLow && isHighVolume && isHeavyDelta && candle.Delta < 0 && (lowerWick / range) >= _wickRatio)
             {
-                // 將箭頭畫在 K 棒低點下方，根據 TickSize 調整距離確保清晰
-                _buySignals[bar] = candle.Low - (10 * InstrumentInfo.TickSize);
+                _buySignals[bar] = candle.Low - (15 * tickSize);
             }
 
-            // ── 做空信號：衰竭/套牢型態 (大量主動買單被套牢，留下長上影線) ──
-            bool isHeavyBuying = delta >= _minDeltaAbs;
-            bool isLongUpperWick = (upperWick / range) >= _wickRatio;
-
-            if (isHighVolume && isHeavyBuying && isLongUpperWick)
+            // ── 做空信號：波段高點 + 爆量 + 主動買單套牢(正Delta) + 長上影線 ──
+            if (isSwingHigh && isHighVolume && isHeavyDelta && candle.Delta > 0 && (upperWick / range) >= _wickRatio)
             {
-                // 將箭頭畫在 K 棒高點上方
-                _sellSignals[bar] = candle.High + (10 * InstrumentInfo.TickSize);
+                _sellSignals[bar] = candle.High + (15 * tickSize);
             }
         }
     }
