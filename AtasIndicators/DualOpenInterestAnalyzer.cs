@@ -63,8 +63,11 @@ namespace AtasIndicators
             var candle = GetCandle(bar);
             var prevCandle = GetCandle(bar - 1);
 
-            // 計算 OI 的增減量
-            decimal deltaOI = candle.OpenInterest - prevCandle.OpenInterest;
+            // 加入 null 檢查
+            if (candle == null || prevCandle == null) return;
+
+            // 修正為 OI
+            decimal deltaOI = candle.OI - prevCandle.OI;
             decimal delta = candle.Delta;
 
             // 初始化當前 K 棒的數值
@@ -78,12 +81,10 @@ namespace AtasIndicators
             {
                 if (delta > 0)
                 {
-                    // 主動買盤帶動 OI 增加
                     _newLongs[bar] = deltaOI;
                 }
                 else if (delta < 0)
                 {
-                    // 主動賣盤帶動 OI 增加
                     _newShorts[bar] = deltaOI;
                 }
             }
@@ -92,12 +93,10 @@ namespace AtasIndicators
             {
                 if (delta > 0)
                 {
-                    // 主動買盤帶動 OI 減少 (空方平倉)
                     _shortCovering[bar] = deltaOI;
                 }
                 else if (delta < 0)
                 {
-                    // 主動賣盤帶動 OI 減少 (多方平倉)
                     _longLiquidation[bar] = deltaOI;
                 }
             }
