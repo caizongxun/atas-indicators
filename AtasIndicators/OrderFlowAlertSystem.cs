@@ -33,7 +33,7 @@ namespace AtasIndicators
 
         // ── 策略參數 ────────────────────────────────────────────────
         private int _period = 20;
-        private decimal _volumeMultiplier = 2.5m; // 預設 2.5 倍，過濾掉一般雜訊
+        private decimal _volumeMultiplier = 2.5m; 
         private decimal _wickRatio = 0.4m;
 
         [Display(Name = "歷史比較週期 (N根K棒)", GroupName = "2. 策略參數", Order = 1)]
@@ -81,8 +81,11 @@ namespace AtasIndicators
         {
             if (bar < _period) return;
 
+            // 解決 CS8602 警告
+            if (InstrumentInfo == null) return;
+
             var candle = GetCandle(bar);
-            if (candle.Ask == 0 && candle.Bid == 0) return;
+            if (candle == null || (candle.Ask == 0 && candle.Bid == 0)) return;
 
             _buySignals[bar] = 0;
             _sellSignals[bar] = 0;
@@ -92,8 +95,11 @@ namespace AtasIndicators
             for (int i = 1; i <= _period; i++)
             {
                 var pastCandle = GetCandle(bar - i);
-                sumBid += pastCandle.Bid;
-                sumAsk += pastCandle.Ask;
+                if (pastCandle != null)
+                {
+                    sumBid += pastCandle.Bid;
+                    sumAsk += pastCandle.Ask;
+                }
             }
             decimal avgBid = sumBid / _period;
             decimal avgAsk = sumAsk / _period;
@@ -112,12 +118,9 @@ namespace AtasIndicators
             bool isUpperWickLong = (upperWick / range) >= _wickRatio;
             bool isSellSignal = isExtremeAsk && isUpperWickLong;
 
-            // 繪製圖表箭頭
             if (isBuySignal) _buySignals[bar] = candle.Low - (15 * InstrumentInfo.TickSize);
             if (isSellSignal) _sellSignals[bar] = candle.High + (15 * InstrumentInfo.TickSize);
 
-            // ── 警報觸發邏輯 ──
-            // 只在最新的一根剛「收盤」的 K 棒觸發警報，避免歷史數據瘋狂彈出警報
             if (bar == CurrentBar - 1 && _useAlert)
             {
                 if (isBuySignal)
