@@ -44,14 +44,14 @@ namespace AtasIndicators
             _bigBuys = new ValueDataSeries("Big Buy")
             {
                 Color = Colors.LimeGreen,
-                VisualType = VisualMode.Dots, // 使用圓點顯示
+                VisualType = VisualMode.Dots, 
                 Width = _dotSize
             };
 
             _bigSells = new ValueDataSeries("Big Sell")
             {
                 Color = Colors.Red,
-                VisualType = VisualMode.Dots, // 使用圓點顯示
+                VisualType = VisualMode.Dots, 
                 Width = _dotSize
             };
 
@@ -64,26 +64,22 @@ namespace AtasIndicators
         {
             if (bar == 0) return;
 
+            // 解決 CS8602 警告
+            if (InstrumentInfo == null) return;
+
             var candle = GetCandle(bar);
+            if (candle == null || (candle.Ask == 0 && candle.Bid == 0)) return;
 
-            // 確保有足跡數據
-            if (candle.Ask == 0 && candle.Bid == 0) return;
-
-            // 初始化當前 K 棒的數值
             _bigBuys[bar] = 0;
             _bigSells[bar] = 0;
 
-            // 判斷主動買單 (Ask) 是否超過大單門檻
             if (candle.Ask >= _volumeThreshold)
             {
-                // 將圓點標記在 K 棒高點上方
                 _bigBuys[bar] = candle.High + (5 * InstrumentInfo.TickSize);
             }
 
-            // 判斷主動賣單 (Bid) 是否超過大單門檻
             if (candle.Bid >= _volumeThreshold)
             {
-                // 將圓點標記在 K 棒低點下方
                 _bigSells[bar] = candle.Low - (5 * InstrumentInfo.TickSize);
             }
         }
