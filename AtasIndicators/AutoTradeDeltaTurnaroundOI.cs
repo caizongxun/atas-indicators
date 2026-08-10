@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Windows.Media;
 using ATAS.Indicators;
-
+using ATAS.DataFeedsCore;
 namespace AtasIndicators
 {
     [DisplayName("Auto Trade: Delta Turnaround + OI")]
