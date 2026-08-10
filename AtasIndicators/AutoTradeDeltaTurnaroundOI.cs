@@ -3,7 +3,8 @@ using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Windows.Media;
 using ATAS.Indicators;
-using ATAS.DataFeedsCore;
+using ATAS.DataFeedsCore; // 引入帳戶與交易核心模組
+
 namespace AtasIndicators
 {
     [DisplayName("Auto Trade: Delta Turnaround + OI")]
@@ -122,9 +123,9 @@ namespace AtasIndicators
                             Security = TradingManager.Security,   // 抓取目前圖表的交易商品
                             Direction = OrderDirections.Buy,      // 做多方向
                             Type = OrderTypes.Market,             // 市價單
-                            Quantity = _orderQuantity             // 下單口數
+                            Volume = _orderQuantity               // 下單口數[cite: 3]
                         };
-                        TradingManager.OpenOrderAsync(order);
+                        TradingManager.OpenOrderAsync(order, false, false, false); // 送出委託，關閉預設參數與確認視窗[cite: 3]
                     }
                 }
             }
@@ -155,9 +156,9 @@ namespace AtasIndicators
                             Security = TradingManager.Security,
                             Direction = OrderDirections.Sell,     // 做空方向
                             Type = OrderTypes.Market,
-                            Quantity = _orderQuantity
+                            Volume = _orderQuantity               // 下單口數[cite: 3]
                         };
-                        TradingManager.OpenOrderAsync(order);
+                        TradingManager.OpenOrderAsync(order, false, false, false); // 送出委託，關閉預設參數與確認視窗[cite: 3]
                     }
                 }
             }
