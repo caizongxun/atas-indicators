@@ -119,13 +119,13 @@ namespace AtasIndicators
                     {
                         var order = new Order
                         {
-                            Portfolio = TradingManager.Portfolio, // 抓取目前圖表綁定的交易帳戶
-                            Security = TradingManager.Security,   // 抓取目前圖表的交易商品
-                            Direction = OrderDirections.Buy,      // 做多方向
-                            Type = OrderTypes.Market,             // 市價單
-                            Volume = _orderQuantity               // 下單口數[cite: 3]
+                            Portfolio = TradingManager.Portfolio, 
+                            Security = TradingManager.Security,   
+                            Direction = OrderDirections.Buy,      
+                            Type = OrderTypes.Market,             
+                            QuantityToFill = _orderQuantity       // 修正為 ATAS 官方精確屬性
                         };
-                        TradingManager.OpenOrderAsync(order, false, false, false); // 送出委託，關閉預設參數與確認視窗[cite: 3]
+                        TradingManager.OpenOrderAsync(order, false, false, false);
                     }
                 }
             }
@@ -154,11 +154,11 @@ namespace AtasIndicators
                         {
                             Portfolio = TradingManager.Portfolio,
                             Security = TradingManager.Security,
-                            Direction = OrderDirections.Sell,     // 做空方向
+                            Direction = OrderDirections.Sell,     
                             Type = OrderTypes.Market,
-                            Volume = _orderQuantity               // 下單口數[cite: 3]
+                            QuantityToFill = _orderQuantity       // 修正為 ATAS 官方精確屬性
                         };
-                        TradingManager.OpenOrderAsync(order, false, false, false); // 送出委託，關閉預設參數與確認視窗[cite: 3]
+                        TradingManager.OpenOrderAsync(order, false, false, false);
                     }
                 }
             }
