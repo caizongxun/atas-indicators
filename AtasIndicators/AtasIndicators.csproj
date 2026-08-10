@@ -24,9 +24,9 @@
       <HintPath>..\libs\OFT.Core.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="ATAS.DataFeedsCore">
-        <HintPath>libs\ATAS.DataFeedsCore.dll</HintPath>
-    </Reference>
+     <Reference Include="ATAS.DataFeedsCore">
+      <HintPath>..\libs\ATAS.DataFeedsCore.dll</HintPath>
+      </Reference>
   </ItemGroup>
 
 </Project>
