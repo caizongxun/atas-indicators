@@ -64,8 +64,9 @@ namespace AtasIndicators
             _churnMarker = new ValueDataSeries("激烈換手標記 (Churn)") 
             { 
                 Color = Colors.Yellow, 
-                VisualType = VisualMode.Square, // 使用方塊/圓點作為醒目標記
-                Width = 5 
+                VisualType = VisualMode.Square, 
+                Width = 5,
+                ShowZeroValue = false // <--- 關鍵修正：隱藏數值為 0 的標記，避免連成一條線
             };
 
             DataSeries.Add(_newLongs);
@@ -130,7 +131,7 @@ namespace AtasIndicators
 
                     if (isHighVolume && isLowOiChange)
                     {
-                        // 觸發標記！將標記繪製在該柱體的頂端/底端，若剛好為 0 則繪製在 0 軸
+                        // 觸發標記！為了讓標記在圖表上明顯，且不被 0 軸擋住，給予一個微小的偏移量
                         _churnMarker[bar] = deltaOI == 0 ? 0.0001m : deltaOI;
                     }
                 }
