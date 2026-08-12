@@ -35,6 +35,7 @@
 ## Git Pull 更新
 
 ```bash
-git pull origin main
+git pull origin main 
+dotnet build AtasIndicators.sln
 ```
 然後重新 Build 並重新載入 ATAS 中的指標。
